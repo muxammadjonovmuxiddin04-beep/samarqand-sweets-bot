@@ -9,7 +9,7 @@ import logging
 import sqlite3
 import os
 from datetime import datetime
-import openai
+import google.generativeai as genai
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from threading import Thread
 
