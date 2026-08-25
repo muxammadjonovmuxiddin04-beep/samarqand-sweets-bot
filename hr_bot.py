@@ -10,6 +10,8 @@ import sqlite3
 import os
 from datetime import datetime
 import openai
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from threading import Thread
 
 from telegram import (
     KeyboardButton,
@@ -376,11 +378,26 @@ async def export_csv(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     data.name = f"arizalar_{datetime.now().strftime('%Y%m%d_%H%M')}.csv"
     await update.message.reply_document(document=data)
 
+class HealthHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.end_headers()
+        self.wfile.write(b"MMM HR bot ishlayapti")
 
+    def log_message(self, format, *args):
+        return
+
+
+def run_health_server():
+    port = int(os.getenv("PORT", "10000"))
+    server = HTTPServer(("0.0.0.0", port), HealthHandler)
+    server.serve_forever()
 # ------------------------- Ishga tushirish -------------------------
 
 def main() -> None:
     init_db()
+    Thread(target=run_health_server, daemon=True).start()
     application = Application.builder().token(BOT_TOKEN).build()
 
     conv_handler = ConversationHandler(
