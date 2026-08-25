@@ -43,6 +43,8 @@ logging.basicConfig(
     level=logging.INFO,
 )
 logger = logging.getLogger(__name__)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("openai").setLevel(logging.WARNING)
 
 # Suhbat bosqichlari (FSM)
 (
@@ -231,7 +233,7 @@ async def get_situational(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     d = context.user_data
 
     await update.message.reply_text(
-        "Rahmat! Barcha ma'lumotlar qabul qilindi. AI (Sun'iy intellekt) orqali tahlil qilinmoqda, ozgina kuting..."
+        "Rahmat! Ma'lumotlaringiz qabul qilindi. Iltimos, ozgina kuting..."
     )
 
     # OpenAI orqali tahlil qilish
@@ -277,26 +279,47 @@ async def get_situational(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         reply_markup=ReplyKeyboardRemove(),
     )
 
-    # Adminga xabar yuborish
+       # Adminga xabar yuborish
     if ADMIN_CHAT_ID:
         admin_text = (
-            f"🆕 **Yangi ariza (#{app_id})**\n\n"
-            f"👤 **F.I.Sh:** {d['full_name']}\n"
-            f"📅 **Tug'ilgan sana:** {d['birth_date']}\n"
-            f"📱 **Telefon:** {d['phone']}\n"
-            f"⏳ **Muddat:** {d['duration']}\n"
-            f"🏢 **Oxirgi ish:** {d['last_workplace']}\n"
-            f"📞 **Tavsiyanoma tel:** {d['reference']}\n"
-            f"💰 **Oldingi oylik:** {d['prev_salary']} | **Kutilayotgan:** {d['expected_salary']}\n\n"
-            f"🧠 **Situatsion javob:** {d['situational']}\n\n"
-            f"🤖 **AI Tahlili va Xulosasi:**\n{ai_analysis}"
+            f"Yangi ariza #{app_id}\n\n"
+            f"F.I.Sh: {d['full_name']}\n"
+            f"Tug'ilgan sana: {d['birth_date']}\n"
+            f"Telefon: {d['phone']}\n"
+            f"Muddat: {d['duration']}\n"
+            f"Oxirgi ish: {d['last_workplace']}\n"
+            f"Tavsiyanoma tel: {d['reference']}\n"
+            f"Oldingi oylik: {d['prev_salary']}\n"
+            f"Kutilayotgan oylik: {d['expected_salary']}\n\n"
+            f"Situatsion javob:\n{d['situational']}\n\n"
+            f"AI tahlili:\n{ai_analysis}"
         )
+
         try:
-            # Rasm va dumaloq videoni adminga yuborish
-            await context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=d['photo'], caption=admin_text, parse_mode="Markdown")
-            await context.bot.send_video_note(chat_id=ADMIN_CHAT_ID, video_note=d['video_note'])
+            await context.bot.send_photo(
+                chat_id=ADMIN_CHAT_ID,
+                photo=d["photo"],
+                caption=f"Yangi ariza #{app_id}",
+            )
         except Exception as e:
-            logger.error(f"Adminga media yuborishda xatolik: {e}")
+            logger.error(f"Rasm yuborilmadi: {e}")
+
+        try:
+            await context.bot.send_video_note(
+                chat_id=ADMIN_CHAT_ID,
+                video_note=d["video_note"],
+            )
+        except Exception as e:
+            logger.error(f"Video yuborilmadi: {e}")
+
+        try:
+            for start in range(0, len(admin_text), 4000):
+                await context.bot.send_message(
+                    chat_id=ADMIN_CHAT_ID,
+                    text=admin_text[start:start + 4000],
+                )
+        except Exception as e:
+            logger.error(f"Admin xabari yuborilmadi: {e}")
 
     context.user_data.clear()
     return ConversationHandler.END
