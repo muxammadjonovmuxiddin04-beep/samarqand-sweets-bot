@@ -1,6 +1,6 @@
 """
-MMM Samarqand — HR bot (Telegram) + AI Tahlil va Kengaytirilgan Anketa
-----------------------------------------------------------------------
+MMM Samarqand — HR bot (Telegram) + Gemini AI Tahlil va Kengaytirilgan Anketa
+----------------------------------------------------------------------------
 """
 
 import csv
@@ -9,7 +9,7 @@ import logging
 import sqlite3
 import os
 from datetime import datetime
-import google.generativeai as genai
+from google import genai
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from threading import Thread
 
@@ -32,13 +32,12 @@ from telegram.ext import (
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_CHAT_ID = 394044965
 
-# OpenAI API kalitingizni shu yerga yozasiz (AI tahlil ishlashi uchun shart)
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+# Google GenAI mijozini sozlash
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+client = genai.Client(api_key=GEMINI_API_KEY)
+
 DB_PATH = "arizalar.db"
 # ============================================================
-
-# OpenAI mijozini sozlash
-openai_client = openai.OpenAI(api_key=OPENAI_API_KEY)
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -46,7 +45,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 logging.getLogger("httpx").setLevel(logging.WARNING)
-logging.getLogger("openai").setLevel(logging.WARNING)
 
 # Suhbat bosqichlari (FSM)
 (
@@ -238,7 +236,7 @@ async def get_situational(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         "Rahmat! Ma'lumotlaringiz qabul qilindi. Iltimos, ozgina kuting..."
     )
 
-    # OpenAI orqali tahlil qilish
+    # Google GenAI orqali tahlil qilish
     ai_prompt = f"""
     Sen Samarqand Sweets (qandolat mahsulotlari ishlab chiqarish) korxonasining bosh HR menejerisan. 
     Bizga uzoq muddatli, mas'uliyatli va barqaror xodim kerak. Quyidagi nomzod ma'lumotlarini tahlil qilib, professional xulosa yozib ber:
@@ -251,7 +249,7 @@ async def get_situational(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     - Tavsiyanoma uchun aloqa: {d.get('reference')}
     - Oldingi oyligi: {d.get('prev_salary')}
     - Talab qilinayotgan oylik: {d.get('expected_salary')}
-    - Situatsion savolga javobi: {d.get('situational')}
+    - Situatsion javobining mazmuni: {d.get('situational')}
     
     Vazifang:
     1. Nomzodni 10 ballik tizimda bahola.
@@ -261,12 +259,11 @@ async def get_situational(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     ai_analysis = "AI tahlili amalga oshmadi."
     try:
-        response = openai_client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": ai_prompt}],
-            temperature=0.7,
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=ai_prompt,
         )
-        ai_analysis = response.choices[0].message.content
+        ai_analysis = response.text
     except Exception as e:
         ai_analysis = f"AI xatolik yuz berdi: {str(e)}"
 
@@ -276,8 +273,8 @@ async def get_situational(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     # Bazaga saqlash
     app_id = save_application(d)
 
+    # Nomzodga professional va ijobiy xabar yuborish
     await update.message.reply_text(
-       
         "✅ **Ma'lumotlaringiz muvaffaqiyatli qabul qilindi!**\n\n"
         "«MMM Samarqand Sweets» jamoasiga o'z nomzodingizni taqdim etganingiz uchun rahmat. "
         "Hozirda kelib tushgan barcha anketalar HR bo'limimiz tomonidan diqqat bilan ko'rib chiqilmoqda.\n\n"
@@ -287,9 +284,8 @@ async def get_situational(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         "Ijobiy natijani kutib qoling!",
         reply_markup=ReplyKeyboardRemove(),
     )
-       
 
-       # Adminga xabar yuborish
+    # Adminga xabar yuborish
     if ADMIN_CHAT_ID:
         admin_text = (
             f"Yangi ariza #{app_id}\n\n"
@@ -323,10 +319,10 @@ async def get_situational(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             logger.error(f"Video yuborilmadi: {e}")
 
         try:
-            for start in range(0, len(admin_text), 4000):
+            for start_idx in range(0, len(admin_text), 4000):
                 await context.bot.send_message(
                     chat_id=ADMIN_CHAT_ID,
-                    text=admin_text[start:start + 4000],
+                    text=admin_text[start_idx:start_idx + 4000],
                 )
         except Exception as e:
             logger.error(f"Admin xabari yuborilmadi: {e}")
@@ -386,6 +382,8 @@ async def export_csv(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     data.name = f"arizalar_{datetime.now().strftime('%Y%m%d_%H%M')}.csv"
     await update.message.reply_document(document=data)
 
+
+# ------------------------- Render Port Serveri -------------------------
 class HealthHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
@@ -401,11 +399,13 @@ def run_health_server():
     port = int(os.getenv("PORT", "10000"))
     server = HTTPServer(("0.0.0.0", port), HealthHandler)
     server.serve_forever()
-# ------------------------- Ishga tushirish -------------------------
 
+
+# ------------------------- Ishga tushirish -------------------------
 def main() -> None:
     init_db()
     Thread(target=run_health_server, daemon=True).start()
+    
     application = Application.builder().token(BOT_TOKEN).build()
 
     conv_handler = ConversationHandler(
