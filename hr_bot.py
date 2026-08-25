@@ -260,7 +260,7 @@ async def get_situational(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     ai_analysis = "AI tahlili amalga oshmadi."
     try:
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-1.5-flash",
             contents=ai_prompt,
         )
         ai_analysis = response.text
