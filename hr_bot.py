@@ -30,7 +30,7 @@ BOT_TOKEN = "8748373187:AAE-FgjVtIyNDn7u32WtTVRPnyStfBi0z5M"
 ADMIN_CHAT_ID = 394044965
 
 # OpenAI API kalitingizni shu yerga yozasiz (AI tahlil ishlashi uchun shart)
-OPENAI_API_KEY = "SIZNING_OPENAI_API_KALITINGIZNI_SHU_YERGA_YOZING"
+OPENAI_API_KEY = "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"
 
 DB_PATH = "arizalar.db"
 # ============================================================
