@@ -277,9 +277,17 @@ async def get_situational(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     app_id = save_application(d)
 
     await update.message.reply_text(
-        "Arizangiz muvaffaqiyatli topshirildi! HR bo'limi uni ko'rib chiqib, siz bilan tez orada bog'lanadi.",
+       
+        "✅ **Ma'lumotlaringiz muvaffaqiyatli qabul qilindi!**\n\n"
+        "«MMM Samarqand Sweets» jamoasiga o'z nomzodingizni taqdim etganingiz uchun rahmat. "
+        "Hozirda kelib tushgan barcha anketalar HR bo'limimiz tomonidan diqqat bilan ko'rib chiqilmoqda.\n\n"
+        "✨ **Keyingi qadam:**\n"
+        "Korxonamizda bo'sh ish o'rinlari talab yuqoriligi sababli bosqichma-bosqich ko'rib chiqiladi. "
+        "Agar anketangiz jamoamiz talablariga mos kelsa, tez orada siz bilan o'zimiz bog'lanamiz va suhbatga taklif qilamiz. "
+        "Ijobiy natijani kutib qoling!",
         reply_markup=ReplyKeyboardRemove(),
     )
+       
 
        # Adminga xabar yuborish
     if ADMIN_CHAT_ID:
